@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Packing & Staging{% endblock %}
+{% block content %}
+<div class="hero-note"><b>Fulfillment handoff</b><span>Confirm each packed box, track its staging state, then record courier collection.</span></div>
+<div class="grid two">
+  <div class="panel"><h2>Packing queue</h2><p>Verified orders ready to be packed.</p>
+    {% for o in orders if o.status=='Packing' %}
+    <div class="pack-card"><div class="issue"><div><b>#{{ o.id }} · {{ o.customer }}</b><p>{{ o.courier }} pickup · {{ o.pickup }}</p></div><span class="tag {{ 'priority' if o.priority=='Priority' else 'normal' }}">{{ o.priority }}</span></div>
+      <label class="field-label" for="box-{{o.id}}">Assign box ID</label><input id="box-{{o.id}}" class="box-input" placeholder="e.g. BX-0201" maxlength="24">
+      <button onclick="confirmPacking({{o.id}}, this)">Confirm packed & move to staging</button><p class="feedback" id="pack-feedback-{{o.id}}" role="status"></p>
+    </div>
+    {% else %}<p class="empty">No orders waiting for packing.</p>{% endfor %}
+  </div>
+  <div class="panel"><h2>Staging & courier handoff</h2><p>Packed boxes waiting for collection.</p>
+    {% for o in orders if o.status=='Staged' %}
+    <div class="pack-card"><div class="issue"><div><b>{{ o.box_id }} · #{{ o.id }} · {{ o.customer }}</b><p>{{ o.courier }} · Pickup {{ o.pickup }}</p></div><span class="sev ok">Staged</span></div>
+      <button onclick="confirmHandoff({{o.id}}, this)">Confirm courier handoff</button><p class="feedback" id="handoff-feedback-{{o.id}}" role="status"></p>
+    </div>
+    {% else %}<p class="empty">No boxes staged for pickup.</p>{% endfor %}
+  </div>
+</div>
+<style>.pack-card{border-top:1px solid var(--line);padding:12px 0 16px}.pack-card .issue{border:0;padding:4px 0 10px}.box-input{display:block;width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;margin:5px 0 10px;font:inherit}.field-label{display:block;font-size:11px;color:var(--muted)}.feedback{margin-top:8px}.feedback.error{color:var(--red)}.feedback.success{color:var(--green)}</style>
+<script>
+async function confirmPacking(id,btn){const input=document.getElementById('box-'+id);const feedback=document.getElementById('pack-feedback-'+id);btn.disabled=true;try{const r=await fetch('/api/orders/'+id+'/pack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({box_id:input.value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Packing failed');feedback.textContent=d.message;feedback.className='feedback success';location.reload()}catch(e){feedback.textContent=e.message;feedback.className='feedback error';btn.disabled=false}}
+async function confirmHandoff(id,btn){const feedback=document.getElementById('handoff-feedback-'+id);if(!confirm('Confirm this box was physically handed to the courier?'))return;btn.disabled=true;try{const r=await fetch('/api/orders/'+id+'/handoff',{method:'POST'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Handoff failed');feedback.textContent=d.message;feedback.className='feedback success';location.reload()}catch(e){feedback.textContent=e.message;feedback.className='feedback error';btn.disabled=false}}
+</script>
+{% endblock %}

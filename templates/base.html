@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Fulfillment Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+<div class="app">
+
+    <aside>
+        <div class="brand">
+            <span class="logo">FH</span>
+            <div>
+                <b>Fulfillment Hub</b>
+                <small>XYZ Operations</small>
+            </div>
+        </div>
+
+        <nav>
+            <a href="/" class="{{ 'active' if request.path=='/' else '' }}">
+                ⌂ <span>Dashboard</span>
+            </a>
+
+            <a href="/orders" class="{{ 'active' if request.path.startswith('/orders') else '' }}">
+                ▤ <span>Orders</span>
+            </a>
+
+            <a href="/picking" class="{{ 'active' if request.path=='/picking' else '' }}">
+                ✓ <span>Picking</span>
+            </a>
+
+            <a href="/inventory" class="{{ 'active' if request.path=='/inventory' else '' }}">
+                ▦ <span>Inventory</span>
+            </a>
+
+            <a href="/packing" class="{{ 'active' if request.path=='/packing' else '' }}">
+                □ <span>Packing & Staging</span>
+            </a>
+
+            <a href="/exceptions" class="{{ 'active' if request.path=='/exceptions' else '' }}">
+                ! <span>Exceptions</span>
+            </a>
+
+            <a href="/analytics" class="{{ 'active' if request.path=='/analytics' else '' }}">
+                ▥ <span>Analytics</span>
+            </a>
+
+            <a href="/reports" class="{{ 'active' if request.path=='/reports' else '' }}">
+                ▤ <span>Reports</span>
+            </a>
+        </nav>
+
+        <div class="side-note">
+            <b>Today's focus</b>
+            <p>Keep priority orders moving before the same-day cutoff.</p>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div>
+                <h1>{% block title %}Fulfillment Hub{% endblock %}</h1>
+                <p class="muted">
+                    {{ request.path != '/' and 'XYZ · Warehouse Operations' or 'What needs attention right now?' }}
+                </p>
+            </div>
+
+            <div class="header-right">
+                <span class="live-dot"></span>
+                Live operations
+                <span class="avatar">OP</span>
+            </div>
+        </header>
+
+        {% block content %}{% endblock %}
+
+    </main>
+
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
+</body>
+</html>

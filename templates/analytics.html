@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Fulfillment Analytics{% endblock %}
+{% block content %}
+<div class="stats">
+  <div class="stat-card"><span>Total orders</span><strong>{{ total }}</strong><small>Current demo queue</small></div>
+  <div class="stat-card"><span>Shipped</span><strong>{{ shipped }}</strong><small>{{ ((shipped / total * 100)|round|int) if total else 0 }}% of orders</small></div>
+  <div class="stat-card"><span>Priority orders</span><strong>{{ priority_shipped }} / {{ priority_total }}</strong><small>Priority orders shipped</small></div>
+  <div class="stat-card"><span>Open issues</span><strong>{{ open_count }}</strong><small>Require follow-up</small></div>
+</div>
+<div class="grid two">
+  <section class="panel"><h2>Order flow</h2><p class="muted">Current order count by fulfillment stage.</p>
+  {% for stage in ['Processing','Picking','Packing','Staged','Shipped','Blocked'] %}
+    {% set n=status_counts.get(stage,0) %}
+    <div class="metric-row"><span>{{ stage }}</span><b>{{ n }}</b></div><div class="bar-track"><div class="bar-fill" style="width: {{ (n / total * 100) if total else 0 }}%"></div></div>
+  {% endfor %}</section>
+  <section class="panel"><h2>Open issues by severity</h2><p class="muted">Use Exceptions to assign follow-up and resolve issues.</p>
+  {% for level in ['HIGH','MEDIUM','LOW'] %}
+  <div class="metric-row"><span><span class="sev {{ level|lower }}">{{ level }}</span></span><b>{{ severity_counts.get(level,0) }}</b></div>{% endfor %}
+  <a class="button-link" href="/exceptions">Review open exceptions →</a></section>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<a class="back" href="/orders">← Back to orders</a>
+<section class="grid two">
+  <div class="panel">
+    <div class="order-title"><div><span class="tag {{ order.priority|lower }}">{{ order.priority }}</span><h2>{{ order.customer }}</h2><p>{{ order.channel }} · Created {{ order.created_at }}</p></div><span class="status {{ order.status|lower }}">{{ order.status }}</span></div>
+    <hr><h3>Items to pick</h3>
+    {% for i in items %}<div class="item"><div><b>{{ i.name }}</b><p>{{ i.variant }} · {{ i.sku }}</p></div><strong>× {{ i.qty }}</strong><span class="stock">Main: {{ i.main_stock }}</span></div>{% endfor %}
+    {% if order.status == 'Blocked' %}
+      <div class="callout danger"><b>Inventory blocked</b><p>{{ order.issue }}</p><p class="transfer-help">The system will calculate the shortage, move the required quantity from the secondary warehouse, and make the order available for picking.</p><button onclick="transfer({{ order.id }}, this)">Request stock transfer</button></div>
+    {% elif order.status == 'Picking' %}
+      <div class="callout"><b>Picking verification</b><p>Confirm the physical SKU, variant and quantity for each line. The order moves to Packing only when every line matches.</p></div>
+      <div id="pick-form">
+        {% for i in items %}
+        <div class="pick-verify-row" data-sku="{{ i.sku }}">
+          <b>{{ i.name }} · {{ i.sku }}</b><p>Expected variant: {{ i.variant }} · Expected qty: {{ i.qty }}</p>
+          <label class="field-label">Scanned / entered SKU</label><input class="verify-sku" placeholder="Scan or type SKU" autocomplete="off">
+          <label class="field-label">Confirmed variant</label><input class="verify-variant" placeholder="Enter exact variant">
+          <label class="field-label">Picked quantity</label><input class="verify-qty" type="number" min="0" step="1" placeholder="Enter quantity">
+        </div>
+        {% endfor %}
+        <button onclick="submitPickVerification({{ order.id }}, this)">Verify items & continue to Packing</button>
+        <p id="pick-feedback" role="status" class="muted"></p>
+      </div>
+    {% elif order.status != 'Shipped' %}
+      <div class="actions"><button onclick="advance({{ order.id }}, '{{ order.status }}')">Advance workflow</button></div>
+    {% else %}<div class="actions"><span class="sev ok">Order Shipped Successfully</span></div>{% endif %}
+  </div>
+  <div class="panel"><h2>Shipment</h2><div class="detail-grid"><span>Courier</span><b>{{ order.courier }}</b><span>Pickup</span><b>{{ order.pickup }}</b><span>Deadline</span><b>{{ order.deadline }}</b><span>Box</span><b>{{ order.box_id or 'Not assigned' }}</b></div><hr><h3>Workflow</h3>
+    {% set stages = ['Processing', 'Picking', 'Packing', 'Staged', 'Shipped'] %}
+    {% if order.status == 'Blocked' %}{% set current_index = 0 %}{% elif order.status in stages %}{% set current_index = stages.index(order.status) %}{% else %}{% set current_index = -1 %}{% endif %}
+    <div class="timeline">{% for s in stages %}<div class="timeline-row {{ 'done' if loop.index0 <= current_index else '' }}"><i></i><span>{{ s }}</span></div>{% endfor %}</div>
+  </div>
+</section>
+{% if transfers %}<div class="panel"><h3>Stock Transfer History</h3>{% for t in transfers %}<div class="item"><div><b>{{ t.qty }} × {{ t.name }}</b><p>{{ t.sku }} · {{ t.from_warehouse }} → {{ t.to_warehouse }}</p></div><span class="sev ok">{{ t.status }}</span></div>{% endfor %}</div>{% endif %}
+<style>.pick-verify-row{border:1px solid var(--line);border-radius:9px;padding:14px;margin:12px 0}.field-label{display:block;font-size:11px;color:var(--muted);margin:9px 0 4px}.pick-verify-row input{width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:13px}.pick-verify-row input:focus{outline:2px solid #bfdbfe;border-color:var(--blue)}#pick-feedback{margin-top:10px}.verify-error{color:var(--red)!important}.verify-success{color:var(--green)!important}</style>
+<script>
+function advance(id,status){const n={Processing:'Picking',Picking:'Packing',Packing:'Staged',Staged:'Shipped'}[status];if(!n)return;fetch('/api/orders/'+id+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:n})}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'Workflow update failed');location.reload()}).catch(e=>alert(e.message))}
+function transfer(id,btn){btn.disabled=true;btn.textContent='Transferring…';fetch('/api/orders/'+id+'/transfer',{method:'POST'}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'Transfer failed');location.reload()}).catch(e=>{alert(e.message);btn.disabled=false;btn.textContent='Request stock transfer'})}
+function submitPickVerification(id,btn){const rows=[...document.querySelectorAll('.pick-verify-row')];const items=rows.map(row=>({sku:row.querySelector('.verify-sku').value.trim(),variant:row.querySelector('.verify-variant').value.trim(),qty:row.querySelector('.verify-qty').value}));const feedback=document.getElementById('pick-feedback');btn.disabled=true;btn.textContent='Checking…';fetch('/api/orders/'+id+'/verify-picking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'Verification failed');feedback.textContent=d.message;feedback.className='verify-success';location.reload()}).catch(e=>{feedback.textContent=e.message;feedback.className='verify-error';btn.disabled=false;btn.textContent='Verify items & continue to Packing'})}
+</script>
+{% endblock %}
